@@ -1,7 +1,7 @@
 /*
  * Linux kernel headers are located separetly inside linux folder in the kernel source tree
  */
-#include <module/linux.h>
+#include <linux/module.h>
 
 static int __init helloworld_init(void)
 {
