@@ -6,4 +6,5 @@
 *.mod.c
 *.mod.o
 *.order
+*.swp
 */Module.symvers
