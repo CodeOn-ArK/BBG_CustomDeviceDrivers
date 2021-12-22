@@ -120,8 +120,10 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
     count = DEV_MEM_SIZE - *f_pos; 
   }
 
-  if(!count)
+  if(!count){
+    pr_err("Error No memory left\n");
     return ENOMEM; 
+  }
 
   /* Copy count number of bytes from user to the local buffer   */
   if(copy_from_user(&pcd_buf[*f_pos], buf, count)){
