@@ -27,22 +27,23 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/kdev_t.h>
+#include <linux/uaccess.h>
 
 #undef pr_fmt 
 #define pr_fmt(fmt) "%s : " fmt, __func__
 
 /* Psuedo Character Device's memory */
-#define DEV_MEM     512
+#define DEV_MEM_SIZE     512
 
 /* psuedo character device  */
-char pcd_buf[DEV_MEM];
+char pcd_buf[DEV_MEM_SIZE];
 
 dev_t device_number;    /* variable to hold device number supplied by the kernel dynamically*/
 struct cdev pcd_cdev;   /* cdev variable to hold pcd info */
 
 
 /* HEADERs Section  */
-loff_t pcd_llseek (struct file *fp, loff_t off, int whence);
+loff_t pcd_lseek (struct file *fp, loff_t off, int whence);
 ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *f_pos);
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos);
 int pcd_open (struct inode *pinode, struct file *fp);
@@ -50,23 +51,53 @@ int pcd_release (struct inode *pinode, struct file *fp);
 
 
 
-loff_t pcd_llseek (struct file *fp, loff_t off, int whence)
+loff_t pcd_lseek (struct file *fp, loff_t offset, int whence)
 {
+  loff_t temp;
   pr_info("lseek requested\n");
-  return 0;
+  pr_info("current file position = %lld\n", fp->f_pos); 
+
+  switch(whence){
+    case SEEK_SET : 
+      if((offset > DEV_MEM_SIZE) || (offset < 0))
+        return -EINVAL;
+      fp->f_pos = offset;
+      break;
+
+    case SEEK_CUR :
+      temp = fp->f_pos + offset;
+      if((temp > DEV_MEM_SIZE) || temp < 0)
+        return -EINVAL;
+      fp->f_pos = temp;
+      break;
+
+    case SEEK_END :
+      temp = fp->f_pos + DEV_MEM_SIZE;
+      if((temp > DEV_MEM_SIZE) || temp < 0)
+        return -EINVAL;
+      fp->f_pos = temp;
+      break;
+      
+    default:
+      return -EINVAL;
+  }
+
+  pr_info("updated file position = %lld\n", fp->f_pos);
+  return fp->f_pos;
 }
+
 ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *f_pos)
 {
   pr_info("read requested for %zu bytes\n", count);
   pr_info("current file position = %lld\n", *f_pos);
 
   /* Adjust the count  */
-  if(*f_pos + count > DEV_MEM){
-    count = DEV_MEM - *f_pos;   
+  if(*f_pos + count > DEV_MEM_SIZE){
+    count = DEV_MEM_SIZE - *f_pos;   
   }                        
 
   /* Copy to user  */
-  if (copy_to_user(buff, pcd_buf[*f_pos], count)){
+  if (copy_to_user(user_buf, &pcd_buf[*f_pos], count)){
     return -EFAULT; 
   }
 
@@ -78,16 +109,41 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
 
   return count;                 
 }                          
-ssize_t pcd_write (struct f ile *fp, const char __user *buf, size_t count, loff_t *f_pos)
+
+ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos)
 {                           
   pr_info("write requested  for %zu bytes\n",count);
-  return 0;
+  pr_info("current file position = %lld\n", *f_pos);
+
+  /* Check the count value  */
+  if(count + *f_pos > DEV_MEM_SIZE){
+    count = DEV_MEM_SIZE - *f_pos; 
+  }
+
+  if(!count)
+    return ENOMEM; 
+
+  /* Copy count number of bytes from user to the local buffer   */
+  if(copy_from_user(&pcd_buf[*f_pos], buf, count)){
+    return -EFAULT;
+  }
+
+  /* Update the current file position  */
+  *f_pos += count;
+  
+  pr_info("bytes successfuly written = %zu bytes\n", count);
+  pr_info("updated file position = %lld\n", *f_pos);
+
+  /* Return the number of bytes succesfully written */
+  return count; 
 }
+
 int pcd_open (struct inode *pinode, struct file *fp)
 {
   pr_info("open was successful\n");
   return 0;
 }
+
 int pcd_release (struct inode *pinode, struct file *fp)
 {
   pr_info("close was successful\n");
@@ -98,7 +154,7 @@ struct file_operations pcd_fops =
 {
   /* file operations variable to hold the systemcalls implemented for the module */
   .owner  = THIS_MODULE,
-  .llseek = pcd_llseek,
+  .llseek = pcd_lseek,
   .read   = pcd_read,
   .write  = pcd_write,
   .open   = pcd_open,
