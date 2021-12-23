@@ -169,27 +169,51 @@ struct device *device_pcd;
 static int __init pcd_init(void)
 {
 /* Drivers entry point  */
+  int ret_code;
   /* 1.  Dynamically allocate a device number */
-  alloc_chrdev_region(&device_number, 0, 1, "psuedo character device");
+  ret_code = alloc_chrdev_region(&device_number, 0, 1, "psuedo character device");
+  if(ret_code < 0)
+    goto alloc_fail;
 
   pr_info("Device number <major>:<minor> = %d:%d\n", MAJOR(device_number), MINOR(device_number));
 
-  /* 2.  Init the cdev structure with the file operation variable */
+  /* 2.  Init the cdev structure with the file operation variable ; returns nothing*/
   cdev_init(&pcd_cdev, &pcd_fops);
 
   /* 3.  Register the pcd's cdev structure with the kernel's VFS */
   pcd_cdev.owner = THIS_MODULE;       /* This tells that this module is the owner of the associated cdev struct*/
-  cdev_add(&pcd_cdev, device_number, 1);
+  ret_code = cdev_add(&pcd_cdev, device_number, 1);
+  if(ret_code < 0)
+    goto dealloc_chrdev;
 
   /* 4.  Create a device class under /sys/class */
   class_pcd =  class_create(THIS_MODULE, "pcd_class");
+  if(IS_ERR(class_pcd)){
+    pr_err("class creation failed\n");
+    ret_code = PTR_ERR(class_pcd) ;
+    goto cdev_remove;
+  }
 
   /* 5.  Populate the sysfs with device information */
   device_pcd = device_create(class_pcd, NULL, device_number, NULL, "pcd");
+  if(IS_ERR(device_pcd)){
+    pr_err("device creation failed\n");
+    ret_code = PTR_ERR(device_pcd) ;
+    goto class_destroy;
+  }
 
   pr_info("Module Init was successful\n" );
 
   return 0;
+
+class_destroy:
+  class_destroy(class_pcd);
+cdev_remove:
+  cdev_del(&pcd_cdev);
+dealloc_chrdev:
+  unregister_chrdev_region(device_number, 1);
+alloc_fail:
+  return ret_code;
 }
 
 static void __exit pcd_exit(void)
