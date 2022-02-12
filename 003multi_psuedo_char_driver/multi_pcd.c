@@ -48,11 +48,11 @@ char pcd_buf_dev4[DEV_MEM_SIZE_PCDEV4];
 
 /* This struct contains devices specific data  */
 struct  pcdev_private_data{
-  char  *buf;
-  unsigned  size;
-  const char  *serial_num;
-  int perm;
-  struct cdev  cdev;
+  int           perm;
+  char          *buf;
+  unsigned      size;
+  const char    *serial_num;
+  struct cdev   cdev;
 };
 
 /* This struct stores driver private data  */
@@ -61,11 +61,11 @@ struct  pcdrv_private_data{
   dev_t dev_number;    /* variable to hold device number supplied by the kernel dynamically*/
   struct  class *class_pcd;
   struct  device  *device_pcd;
-  struct  pcdev_private_data  pcdev_data[TOTAL_DEVICES];
+  struct  pcdev_private_data      pcdev_data[TOTAL_DEVICES];
 };
 
 
-struct pcdrv_private_data driver_private_data = {
+struct pcdrv_private_data     driver_private_data = {
   .total_devices  = TOTAL_DEVICES,
   .pcdev_data = {
     [0] ={
@@ -74,24 +74,28 @@ struct pcdrv_private_data driver_private_data = {
       .serial_num = "PCD1",
       .perm = 0x01  /* RDONLY */
     },
+
     [1] ={
       .buf = pcd_buf_dev2,
       .size = DEV_MEM_SIZE_PCDEV2,
       .serial_num = "PCD2",
       .perm = 0x10  /* WRONLY */
     },
+
     [2] ={
       .buf = pcd_buf_dev3,
       .size = DEV_MEM_SIZE_PCDEV3,
       .serial_num = "PCD3",
       .perm = 0x11  /* RDWR */
     },
+
     [3] ={
       .buf = pcd_buf_dev4,
       .size = DEV_MEM_SIZE_PCDEV4,
       .serial_num = "PCD4",
       .perm = 0x11  /* RDWR */
     },
+
   }
 };
 
@@ -232,59 +236,74 @@ struct file_operations pcd_fops =
   .release= pcd_release
 };
 
+/*
 struct class *class_pcd;
 struct device *device_pcd;
+*/
 
 static int __init pcd_init(void)
 {
-#if 0
-/* Drivers entry point  */
-  int ret_code;
+/* Driver's entry point  */
+  int ret_code, i;
   /* 1.  Dynamically allocate a device number */
-  ret_code = alloc_chrdev_region(&device_number, 0, 1, "psuedo character device");
+  ret_code = alloc_chrdev_region(&driver_private_data.dev_number, 0, TOTAL_DEVICES, "psuedo character device");
   if(ret_code < 0)
     goto alloc_fail;
 
-  pr_info("Device number <major>:<minor> = %d:%d\n", MAJOR(device_number), MINOR(device_number));
-
-  /* 2.  Init the cdev structure with the file operation variable ; returns nothing*/
-  cdev_init(&pcd_cdev, &pcd_fops);
-
-  /* 3.  Register the pcd's cdev structure with the kernel's VFS */
-  pcd_cdev.owner = THIS_MODULE;       /* This tells that this module is the owner of the associated cdev struct*/
-  ret_code = cdev_add(&pcd_cdev, device_number, 1);
-  if(ret_code < 0)
+  /* 2.  Create a device class under /sys/class ; this has to be created once for any driver, all the 
+   * devices' dev directory reside inside this class
+   */
+  driver_private_data.class_pcd =  class_create(THIS_MODULE, "pcd_class");
+  if(IS_ERR(driver_private_data.class_pcd)){
+    pr_err("class creation failed\n");
+    ret_code = PTR_ERR(driver_private_data.class_pcd) ;
     goto dealloc_chrdev;
 
-  /* 4.  Create a device class under /sys/class */
-  class_pcd =  class_create(THIS_MODULE, "pcd_class");
-  if(IS_ERR(class_pcd)){
-    pr_err("class creation failed\n");
-    ret_code = PTR_ERR(class_pcd) ;
-    goto cdev_remove;
   }
 
-  /* 5.  Populate the sysfs with device information */
-  device_pcd = device_create(class_pcd, NULL, device_number, NULL, "pcd");
-  if(IS_ERR(device_pcd)){
-    pr_err("device creation failed\n");
-    ret_code = PTR_ERR(device_pcd) ;
-    goto class_destroy;
+  for(i=0;  i<TOTAL_DEVICES;  i++){
+    /* This needs to be done for every device hence we loop this no of device times  */
+    pr_info("Device number <major>:<minor> = %d:%d\n", MAJOR(driver_private_data.dev_number), MINOR(driver_private_data.dev_number+i));
+
+    /* 3.  Init the cdev structure with the file operation variable ; returns nothing*/
+    cdev_init(&driver_private_data.pcdev_data[i].cdev, &pcd_fops);
+
+    /* 4.  Register the pcd's cdev structure with the kernel's VFS */
+    driver_private_data.pcdev_data[i].cdev.owner = THIS_MODULE;       /* This tells that this module is the owner of the associated cdev struct*/
+    ret_code = cdev_add(&driver_private_data.pcdev_data[i].cdev, driver_private_data.dev_number, 1);
+    if(ret_code < 0)
+      goto cdev_remove;
+
+    /* 5.  Populate the sysfs with device information */
+    driver_private_data.device_pcd = device_create(driver_private_data.class_pcd, NULL, driver_private_data.dev_number, NULL, "pcd-%d",i);
+    if(IS_ERR(driver_private_data.device_pcd )){
+      pr_err("device creation failed\n");
+      ret_code = PTR_ERR(driver_private_data.device_pcd) ;
+      goto class_destroy;
+
+    }
   }
+
 
   pr_info("Module Init was successful\n" );
 
   return 0;
 
-class_destroy:
-  class_destroy(class_pcd);
 cdev_remove:
-  cdev_del(&pcd_cdev);
+
+class_destroy:
+  for(;i >= 0; i-- ){
+    device_destroy(driver_private_data.class_pcd, driver_private_data.dev_number + i);
+    cdev_del(&driver_private_data.pcdev_data[i].cdev);
+  }
+  class_destroy(driver_private_data.class_pcd);
+
 dealloc_chrdev:
-  unregister_chrdev_region(device_number, 1);
+  unregister_chrdev_region(driver_private_data.dev_number, TOTAL_DEVICES);
+
 alloc_fail:
   return ret_code;
-#endif
+
   return  0;
 }
 
