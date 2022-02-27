@@ -8,3 +8,6 @@
 *.order
 *.swp
 */Module.symvers
+*.vscode/*
+*.cmd
+
