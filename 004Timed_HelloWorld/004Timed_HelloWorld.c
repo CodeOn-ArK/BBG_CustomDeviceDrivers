@@ -23,9 +23,11 @@
 static int num = 10;
 static struct timeval start_time;
 
+/* This tells the kernel that num is module/cmdline parameter  */
 module_param(num, int, S_IRUGO);
 
 static void hello(void){
+ /*Prints hello @num number of times; num is a argument provided during module insertion   */ 
 	int i;
 	for(i=0; i<num; i++){
 		pr_info("[%d/%d] Hello!\n", i, num);
@@ -33,7 +35,7 @@ static void hello(void){
 }
 
 static int __init helloworld_entry(void){
-	do_gettimeofday(&start_time);
+	do_gettimeofday(&start_time); 
 	hello();
 
 	return 0;
