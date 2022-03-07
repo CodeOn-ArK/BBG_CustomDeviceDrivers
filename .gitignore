@@ -7,6 +7,7 @@
 *.mod.o
 *.order
 *.swp
+*.dwo
 */Module.symvers
 *.vscode/*
 *.cmd
