@@ -14,4 +14,4 @@ help:
 host:
 	make -C $(HOST_KERNEL_DIR) M=$(PWD) modules
 transfer:
-	scp *.c debian@192.168.7.2:modules                                                           
+	scp *.ko debian@192.168.7.2:modules                                                           
