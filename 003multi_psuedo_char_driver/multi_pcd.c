@@ -48,7 +48,7 @@ char pcd_buf_dev4[DEV_MEM_SIZE_PCDEV4];
 
 /* This struct contains devices specific data  */
 struct  pcdev_private_data{
-  int           perm;
+  int           perm;     //permission
   char          *buf;
   unsigned      size;
   const char    *serial_num;
@@ -245,12 +245,18 @@ static int __init pcd_init(void)
 {
 /* Driver's entry point  */
   int ret_code, i;
-  /* 1.  Dynamically allocate a device number */
-  ret_code = alloc_chrdev_region(&driver_private_data.dev_number, 0, TOTAL_DEVICES, "psuedo character device");
+  /* 1.  Dynamically allocate a device number
+   * Here the base device number is stored in driver_private_data.dev_number which corresponds 
+   * to pcd1. It will allocate space for 4 devices starting from pcd0
+   * subsequent device numbers can be obtained by the following approach :
+   *        MAJOR(driver_private_data.dev_number) + MINOR(driver_private_data.dev_number+i)
+   *        where i follows 0<= i <= 3
+   * */
+  ret_code = alloc_chrdev_region(&driver_private_data.dev_number, 0, TOTAL_DEVICES, "pdcevices");
   if(ret_code < 0)
     goto alloc_fail;
 
-  /* 2.  Create a device class under /sys/class ; this has to be created once for any driver, all the 
+  /* 2.  Create a device class under /sys/class ; this has to be created once for any driver, all the 4 
    * devices' dev directory reside inside this class
    */
   driver_private_data.class_pcd =  class_create(THIS_MODULE, "pcd_class");
@@ -270,12 +276,12 @@ static int __init pcd_init(void)
 
     /* 4.  Register the pcd's cdev structure with the kernel's VFS */
     driver_private_data.pcdev_data[i].cdev.owner = THIS_MODULE;       /* This tells that this module is the owner of the associated cdev struct*/
-    ret_code = cdev_add(&driver_private_data.pcdev_data[i].cdev, driver_private_data.dev_number, 1);
+    ret_code = cdev_add(&driver_private_data.pcdev_data[i].cdev, driver_private_data.dev_number + i, 1);
     if(ret_code < 0)
       goto cdev_remove;
 
     /* 5.  Populate the sysfs with device information */
-    driver_private_data.device_pcd = device_create(driver_private_data.class_pcd, NULL, driver_private_data.dev_number, NULL, "pcd-%d",i);
+    driver_private_data.device_pcd = device_create(driver_private_data.class_pcd, NULL, driver_private_data.dev_number+i, NULL, "pcd%d",i);
     if(IS_ERR(driver_private_data.device_pcd )){
       pr_err("device creation failed\n");
       ret_code = PTR_ERR(driver_private_data.device_pcd) ;
@@ -283,7 +289,6 @@ static int __init pcd_init(void)
 
     }
   }
-
 
   pr_info("Module Init was successful\n" );
 
@@ -309,6 +314,15 @@ alloc_fail:
 
 static void __exit pcd_exit(void)
 {
+  int i;
+  for(i=4;i > 0; i-- ){
+    device_destroy(driver_private_data.class_pcd, driver_private_data.dev_number + i-1);
+    cdev_del(&driver_private_data.pcdev_data[i-1].cdev);
+  }
+  class_destroy(driver_private_data.class_pcd);
+  unregister_chrdev_region(driver_private_data.dev_number, TOTAL_DEVICES);
+
+  pr_info("Module Removal was successful\n" );
 #if 0
 /* Drivers exit point 
  * To deinitialize follow the exact reverse order as for initialization
