@@ -106,6 +106,7 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos);
 int pcd_open (struct inode *pinode, struct file *fp);
 int pcd_release (struct inode *pinode, struct file *fp);
+int check_perm(void);
 
 
 
@@ -209,15 +210,27 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
 
 int pcd_open (struct inode *pinode, struct file *fp)
 {
-#if 0
-  pr_info("open was successful\n");
-  return 0;
+#if 1
+  int ret;
+  pr_info("device number -> %d", MINOR(pinode->i_rdev));
+  ret = check_perm();
+  if(!ret){
+    pr_info("open was successful\n");
+    return 0;
+  }else{
+    pr_err("open was un-successful\n");
+    return 1;
+  }
 #endif
-  return  0;
 }
 
+int check_perm(void){
+
+  return 0;
+}
 int pcd_release (struct inode *pinode, struct file *fp)
 {
+  pr_info("close was successful\n");
 #if 0
   pr_info("close was successful\n");
   return 0;
@@ -234,6 +247,7 @@ struct file_operations pcd_fops =
   .write  = pcd_write,
   .open   = pcd_open,
   .release= pcd_release
+
 };
 
 /*
@@ -291,7 +305,6 @@ static int __init pcd_init(void)
   }
 
   pr_info("Module Init was successful\n" );
-
   return 0;
 
 cdev_remove:
@@ -309,13 +322,12 @@ dealloc_chrdev:
 alloc_fail:
   return ret_code;
 
-  return  0;
 }
 
 static void __exit pcd_exit(void)
 {
   int i;
-  for(i=4;i > 0; i-- ){
+  for(i=4;  i>0; i-- ){
     device_destroy(driver_private_data.class_pcd, driver_private_data.dev_number + i-1);
     cdev_del(&driver_private_data.pcdev_data[i-1].cdev);
   }
@@ -323,17 +335,6 @@ static void __exit pcd_exit(void)
   unregister_chrdev_region(driver_private_data.dev_number, TOTAL_DEVICES);
 
   pr_info("Module Removal was successful\n" );
-#if 0
-/* Drivers exit point 
- * To deinitialize follow the exact reverse order as for initialization
- */
-  device_destroy(class_pcd, device_number);
-  class_destroy(class_pcd);
-  cdev_del(&pcd_cdev);
-  unregister_chrdev_region(device_number, 1);
-
-  pr_info("Module Unloaded\n");
-#endif
 
 }
 
