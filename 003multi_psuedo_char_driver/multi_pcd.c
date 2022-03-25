@@ -150,17 +150,18 @@ loff_t pcd_lseek (struct file *fp, loff_t offset, int whence)
 
 ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *f_pos)
 {
-#if 0
+#if 1
+  struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
   pr_info("read requested for %zu bytes\n", count);
   pr_info("current file position = %lld\n", *f_pos);
 
   /* Adjust the count  */
-  if(*f_pos + count > DEV_MEM_SIZE){
-    count = DEV_MEM_SIZE - *f_pos;   
+  if(*f_pos + count > curr_pcdev->size){
+    count = curr_pcdev->size - *f_pos;   
   }                        
 
   /* Copy to user  */
-  if (copy_to_user(user_buf, &pcd_buf[*f_pos], count)){
+  if (copy_to_user(user_buf, &curr_pcdev->buf[*f_pos], count)){
     return -EFAULT; 
   }
 
@@ -172,27 +173,27 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
 
   return count;                 
 #endif
-  return  0;
 }                          
 
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos)
 {                           
-#if 0
+#if 1
+  struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
   pr_info("write requested  for %zu bytes\n",count);
   pr_info("current file position = %lld\n", *f_pos);
 
   /* Check the count value  */
-  if(count + *f_pos > DEV_MEM_SIZE){
-    count = DEV_MEM_SIZE - *f_pos; 
+  if(count + *f_pos > curr_pcdev->size){
+    count = curr_pcdev->size - *f_pos; 
   }
 
   if(!count){
     pr_err("Error No memory left\n");
-    return ENOMEM; 
+    return -ENOMEM; 
   }
 
   /* Copy count number of bytes from user to the local buffer   */
-  if(copy_from_user(&pcd_buf[*f_pos], buf, count)){
+  if(copy_from_user(&curr_pcdev->buf[*f_pos], buf, count)){
     return -EFAULT;
   }
 
@@ -205,14 +206,30 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
   /* Return the number of bytes succesfully written */
   return count; 
 #endif
-  return  0;
+}
+
+int check_perm(void){
+
+  return 0;
 }
 
 int pcd_open (struct inode *pinode, struct file *fp)
 {
-#if 1
-  int ret;
-  pr_info("device number -> %d", MINOR(pinode->i_rdev));
+  int ret, minor_num;
+  struct pcdev_private_data *curr_pcdev;
+
+  minor_num = MINOR(pinode->i_rdev);
+  pr_info("device number -> %d", minor_num);
+
+ /* Get the struct containing the current device number, and assign it to curr_pcdev ptr  */ 
+  curr_pcdev = container_of(pinode->i_cdev, struct pcdev_private_data, cdev);
+
+ /* Since we need this data(private data of the current opened device) 
+  * in various places, we store it in file structures' private_data field
+  * For use by other methods.
+  */ 
+  fp->private_data = curr_pcdev;
+
   ret = check_perm();
   if(!ret){
     pr_info("open was successful\n");
@@ -221,13 +238,8 @@ int pcd_open (struct inode *pinode, struct file *fp)
     pr_err("open was un-successful\n");
     return 1;
   }
-#endif
 }
 
-int check_perm(void){
-
-  return 0;
-}
 int pcd_release (struct inode *pinode, struct file *fp)
 {
   pr_info("close was successful\n");
