@@ -112,28 +112,29 @@ int check_perm(void);
 
 loff_t pcd_lseek (struct file *fp, loff_t offset, int whence)
 {
-#if 0
   loff_t temp;
+  struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
+  int dev_mem_size = curr_pcdev->size;
   pr_info("lseek requested\n");
   pr_info("current file position = %lld\n", fp->f_pos); 
 
   switch(whence){
     case SEEK_SET : 
-      if((offset > DEV_MEM_SIZE) || (offset < 0))
+      if((offset > dev_mem_size) || (offset < 0))
         return -EINVAL;
       fp->f_pos = offset;
       break;
 
     case SEEK_CUR :
       temp = fp->f_pos + offset;
-      if((temp > DEV_MEM_SIZE) || temp < 0)
+      if((temp > dev_mem_size) || temp < 0)
         return -EINVAL;
       fp->f_pos = temp;
       break;
 
     case SEEK_END :
-      temp = fp->f_pos + DEV_MEM_SIZE;
-      if((temp > DEV_MEM_SIZE) || temp < 0)
+      temp = fp->f_pos + dev_mem_size;
+      if((temp > dev_mem_size) || temp < 0)
         return -EINVAL;
       fp->f_pos = temp;
       break;
@@ -144,13 +145,10 @@ loff_t pcd_lseek (struct file *fp, loff_t offset, int whence)
 
   pr_info("updated file position = %lld\n", fp->f_pos);
   return fp->f_pos;
-#endif
-  return  0;
 }
 
 ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *f_pos)
 {
-#if 1
   struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
   pr_info("read requested for %zu bytes\n", count);
   pr_info("current file position = %lld\n", *f_pos);
@@ -172,12 +170,10 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
   pr_info("updated file position = %lld\n", *f_pos);
 
   return count;                 
-#endif
 }                          
 
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos)
 {                           
-#if 1
   struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
   pr_info("write requested  for %zu bytes\n",count);
   pr_info("current file position = %lld\n", *f_pos);
@@ -205,7 +201,6 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
 
   /* Return the number of bytes succesfully written */
   return count; 
-#endif
 }
 
 int check_perm(void){
@@ -243,10 +238,6 @@ int pcd_open (struct inode *pinode, struct file *fp)
 int pcd_release (struct inode *pinode, struct file *fp)
 {
   pr_info("close was successful\n");
-#if 0
-  pr_info("close was successful\n");
-  return 0;
-#endif
   return  0;
 }
 
