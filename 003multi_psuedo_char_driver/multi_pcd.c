@@ -35,16 +35,21 @@
 #define TOTAL_DEVICES           4
 
 /* Psuedo Character Device's memory */
+#define DEV_MEM_SIZE_PCDEV0     512
 #define DEV_MEM_SIZE_PCDEV1     512
 #define DEV_MEM_SIZE_PCDEV2     512
 #define DEV_MEM_SIZE_PCDEV3     512
-#define DEV_MEM_SIZE_PCDEV4     512
+
+/* Device Permission  */
+#define RO    0x01
+#define WO    0x10
+#define RW    0x11
 
 /* psuedo character device  */
+char pcd_buf_dev0[DEV_MEM_SIZE_PCDEV0];
 char pcd_buf_dev1[DEV_MEM_SIZE_PCDEV1];
 char pcd_buf_dev2[DEV_MEM_SIZE_PCDEV2];
 char pcd_buf_dev3[DEV_MEM_SIZE_PCDEV3];
-char pcd_buf_dev4[DEV_MEM_SIZE_PCDEV4];
 
 /* This struct contains devices specific data  */
 struct  pcdev_private_data{
@@ -69,31 +74,31 @@ struct pcdrv_private_data     driver_private_data = {
   .total_devices  = TOTAL_DEVICES,
   .pcdev_data = {
     [0] ={
-      .buf = pcd_buf_dev1,
-      .size = DEV_MEM_SIZE_PCDEV1,
-      .serial_num = "PCD1",
-      .perm = 0x01  /* RDONLY */
+      .buf = pcd_buf_dev0,
+      .size = DEV_MEM_SIZE_PCDEV0,
+      .serial_num = "PCD0",
+      .perm = RO /* RDONLY */
     },
 
     [1] ={
-      .buf = pcd_buf_dev2,
-      .size = DEV_MEM_SIZE_PCDEV2,
-      .serial_num = "PCD2",
-      .perm = 0x10  /* WRONLY */
+      .buf = pcd_buf_dev1,
+      .size = DEV_MEM_SIZE_PCDEV1,
+      .serial_num = "PCD1",
+      .perm = WO /* WRONLY */
     },
 
     [2] ={
-      .buf = pcd_buf_dev3,
-      .size = DEV_MEM_SIZE_PCDEV3,
-      .serial_num = "PCD3",
-      .perm = 0x11  /* RDWR */
+      .buf = pcd_buf_dev2,
+      .size = DEV_MEM_SIZE_PCDEV2,
+      .serial_num = "PCD2",
+      .perm = RW /* RDWR */
     },
 
     [3] ={
-      .buf = pcd_buf_dev4,
-      .size = DEV_MEM_SIZE_PCDEV4,
-      .serial_num = "PCD4",
-      .perm = 0x11  /* RDWR */
+      .buf = pcd_buf_dev3,
+      .size = DEV_MEM_SIZE_PCDEV3,
+      .serial_num = "PCD3",
+      .perm = RW /* RDWR */
     },
 
   }
@@ -106,7 +111,7 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos);
 int pcd_open (struct inode *pinode, struct file *fp);
 int pcd_release (struct inode *pinode, struct file *fp);
-int check_perm(void);
+int check_perm(struct file *fp);
 
 
 
@@ -203,9 +208,36 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
   return count; 
 }
 
-int check_perm(void){
+int check_perm(struct file *fp){
 
-  return 0;
+  fmode_t file_mode = fp->f_mode;
+  struct pcdev_private_data *curr_pcdev = (struct pcdev_private_data *) fp->private_data;
+  pr_info("serial num %s", curr_pcdev->serial_num);
+
+  if(curr_pcdev->perm == 0x11){
+    return 0;
+  }
+
+  if((file_mode & FMODE_READ) && !(file_mode & FMODE_WRITE)){
+  /* RO  */
+    if(curr_pcdev->perm == 0x01) 
+       return 0;
+
+  }else if((file_mode & FMODE_WRITE) && !(file_mode & FMODE_READ)){
+  /* WO  */  
+    if(curr_pcdev->perm == 0x10) 
+       return 0;
+
+  }else if(file_mode & FMODE_READ){
+  /* RO or RW*/
+
+  }else if(file_mode & FMODE_WRITE){
+  /* WO or RW  */ 
+    
+  }
+  pr_err("passed all checks\n");
+
+  return -EPERM;
 }
 
 int pcd_open (struct inode *pinode, struct file *fp)
@@ -225,13 +257,13 @@ int pcd_open (struct inode *pinode, struct file *fp)
   */ 
   fp->private_data = curr_pcdev;
 
-  ret = check_perm();
+  ret = check_perm(fp);
   if(!ret){
     pr_info("open was successful\n");
     return 0;
   }else{
     pr_err("open was un-successful\n");
-    return 1;
+    return -EPERM;
   }
 }
 
