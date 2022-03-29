@@ -31,63 +31,74 @@
 #define RDWR      2
 
 
-/* 1. Create Platform data for the devices  */
+/* 1. Create Platform data for the devices 
+ * (This one is created by us to store data related to the platform devices)
+ */
 struct platform_device_data pcdev_pdata[2] = {
     [0]  = {
       .perm = RDWR,
-      .str  = "Platform_PCDEV_0",
+      .str  = "Platform-PCDEV-0",
       .size = 512
       
     },
     [1]  = {
       .perm = RDWR,
-      .str  = "Platform_PCDEV_1",
+      .str  = "Platform-PCDEV-1",
       .size = 512
       
     }
 };
 
 
-/* 2. Create Platform devices  */
+/* 2. Create Platform devices 
+ *    This is used by the VFS to register with the platform bus
+ */
 struct platform_device pcdev[2] = {
     [0] = {
-      .name = "platform_pcdev-0",
+      .name = "psuedo-character-device",
       .id   = 0,
       .dev = {
-        .platform_data = &pcdev_pdata[0]
+        .platform_data = &pcdev_pdata[0],
+        .release = pcd_pdevice_release
       }
     },
     [1] = {
-      .name = "platform_pcdev-1",
+      .name = "psuedo-character-device",
       .id   = 1,
       .dev = {
-        .platform_data = &pcdev_pdata[1]
+        .platform_data = &pcdev_pdata[1],
+        .release = pcd_pdevice_release
       }
     }
 };
 
+void pcd_pdevice_release(struct device *dev){
+    pr_info("Platform device released");
 
-static int __init platform_pcdev_init(void){
+}
+
+static int __init pcd_pdevice_init(void){
       platform_device_register(&pcdev[0]);
       platform_device_register(&pcdev[1]);
+      pr_info("Platform Device registered");
       return 0;
 
 }
 
 
-static void __exit platform_pcdev_exit(void){
-      platform_device_register(&pcdev[0]);
-      platform_device_register(&pcdev[1]);
+static void __exit pcd_pdevice_exit(void){
+      platform_device_unregister(&pcdev[0]);
+      platform_device_unregister(&pcdev[1]);
+      pr_info("Platform Device removed");
 
 }
-
 
 
 /*
  * REGISTRATION SECTION
  */
-module_init(platform_pcdev_init);     /* Used to tell the build system about the init funx*/
-module_exit(platform_pcdev_exit);     /* Used to tell the build system about the exit funx*/
+module_init(pcd_pdevice_init);     /* Used to tell the build system about the init funx*/
+module_exit(pcd_pdevice_exit);     /* Used to tell the build system about the exit funx*/
 
 /*
  * MODULE DESCRIPTION
