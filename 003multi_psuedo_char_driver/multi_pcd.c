@@ -104,6 +104,18 @@ struct pcdrv_private_data     driver_private_data = {
   }
 };
 
+struct file_operations pcd_fops =  
+{
+  /* file operations variable to hold the systemcalls implemented for the module */
+  .owner  = THIS_MODULE,
+  .llseek = pcd_lseek,
+  .read   = pcd_read,
+  .write  = pcd_write,
+  .open   = pcd_open,
+  .release= pcd_release
+
+};
+
 
 /* HEADERs Section  */
 loff_t pcd_lseek (struct file *fp, loff_t off, int whence);
@@ -273,22 +285,6 @@ int pcd_release (struct inode *pinode, struct file *fp)
   return  0;
 }
 
-struct file_operations pcd_fops =  
-{
-  /* file operations variable to hold the systemcalls implemented for the module */
-  .owner  = THIS_MODULE,
-  .llseek = pcd_lseek,
-  .read   = pcd_read,
-  .write  = pcd_write,
-  .open   = pcd_open,
-  .release= pcd_release
-
-};
-
-/*
-struct class *class_pcd;
-struct device *device_pcd;
-*/
 
 static int __init pcd_init(void)
 {
