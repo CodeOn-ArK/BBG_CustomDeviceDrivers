@@ -1,4 +1,4 @@
-obj-m := multi_pcd_setup.o
+obj-m := multi_pcd_setup.o multi_pcd_platform_driver.o
 
 ARCH=arm
 CROSS_COMPILE=arm-linux-gnueabihf-
