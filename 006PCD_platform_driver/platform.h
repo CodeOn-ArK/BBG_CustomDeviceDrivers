@@ -26,5 +26,5 @@ void pcd_pdevice_release(struct device *dev);
 struct platform_device_data{
     int perm;
     int size;
-    const char *str;
+    const char *str;      //Serial Number 
 };

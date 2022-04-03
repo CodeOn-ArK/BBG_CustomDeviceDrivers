@@ -32,6 +32,23 @@
 #include "platform.h"
 
 
+/* Device Private data structure  */
+struct pcdev_private_data{
+    struct  platform_device_data pdev_pdata;    //Holds device specific data
+    char    *buffer;                            //points to the buffer associated with the device
+    dev_t   curr_dev_num;                       //holds current device num
+    struct  cdev  cdev;                         //holds current cdev struct
+};
+
+/* Driver private data  */
+struct pcdriver_private_data{
+    int total_devices;
+    dev_t device_num_base;
+    struct class *class_pcd;
+    struct device *device_pcd;
+};
+
+/* Platform Driver structure to probe and remove  */
 struct platform_driver pcd_pdriver = {
     .probe = pcd_pdriver_probe,
     .remove = pcd_pdriver_remove,
@@ -40,6 +57,7 @@ struct platform_driver pcd_pdriver = {
     }
 };
 
+/* Structure to hold file operation  */
 struct file_operations pcd_fops =  
 {
   /* file operations variable to hold the systemcalls implemented for the module */
@@ -60,7 +78,7 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
 }
 
 int pcd_pdriver_remove(struct platform_device *pcdev){
-  pr_info("Driver Removed ");
+  pr_info("Device Removed ");
   return 0;
 
 }
@@ -238,28 +256,28 @@ int pcd_release (struct inode *pinode, struct file *fp)
 }
 
 
-static int __init platform_pcddriver_init(void)
+static int __init pcd_pdriver_init(void)
 {
-/* Driver's entry point  */
-  platform_driver_register(&pcd_pdriver);
-  pr_info("PCD Platform Driver loaded");
+    /* Driver's entry point  */
+      platform_driver_register(&pcd_pdriver);
+      pr_info("PCD Platform Driver loaded");
 
-  return 0;
+      return 0;
 
 }
 
-static void __exit platform_pcddriver_exit(void)
+static void __exit pcd_pdriver_exit(void)
 {
-  platform_driver_unregister(&pcd_pdriver);
-  pr_info("PCD Platform Driver unloaded");
+      platform_driver_unregister(&pcd_pdriver);
+      pr_info("PCD Platform Driver unloaded");
 
 }
 
 /*
  * REGISTRATION SECTION
  */
-module_init(platform_pcddriver_init);     /* Used to tell the build system about the init funx*/
-module_exit(platform_pcddriver_exit);     /* Used to tell the build system about the exit funx*/
+module_init(pcd_pdriver_init);     /* Used to tell the build system about the init funx*/
+module_exit(pcd_pdriver_exit);     /* Used to tell the build system about the exit funx*/
 
 /*
  * MODULE DESCRIPTION
