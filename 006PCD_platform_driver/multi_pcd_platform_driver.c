@@ -70,6 +70,7 @@ struct file_operations pcd_fops =
 
 };
 
+struct pcdriver_private_data pcdriver_private_data;
 
 int pcd_pdriver_probe(struct platform_device *pcdev){
   pr_info("Driver Probe Success; Device found");
@@ -259,16 +260,45 @@ int pcd_release (struct inode *pinode, struct file *fp)
 static int __init pcd_pdriver_init(void)
 {
     /* Driver's entry point  */
+      int ret;
+
+      //1. Dynamically allocate a device number for the number of devices
+      ret = alloc_chrdev_region(&pcdriver_private_data.device_num_base, 0, pcdriver_private_data.total_devices, "pcdevices");
+      if(ret < 0){
+        pr_err("Alloc Chrdev Region failed");
+        goto out;
+
+      }
+
+      //2. Create device class 
+      pcdriver_private_data.class_pcd = class_create(THIS_MODULE, "pcd_class")   ;
+      if(IS_ERR(pcdriver_private_data.class_pcd)){
+        pr_err("Class creation failed");
+        unregister_chrdev_region(pcdriver_private_data.device_num_base, pcdriver_private_data.total_devices);
+        ret = PTR_ERR(pcdriver_private_data.class_pcd);
+        return ret;
+
+      }
+
+      //3. Register the platform driver
       platform_driver_register(&pcd_pdriver);
       pr_info("PCD Platform Driver loaded");
 
+out:
       return 0;
 
 }
 
 static void __exit pcd_pdriver_exit(void)
 {
+      //1. Unregister the platform driver
       platform_driver_unregister(&pcd_pdriver);
+
+      //2. Destroy the class
+      class_destroy(pcdriver_private_data.class_pcd);
+
+      //3. Unregister device numbers
+      unregister_chrdev_region(pcdriver_private_data.device_num_base, pcdriver_private_data.total_devices);
       pr_info("PCD Platform Driver unloaded");
 
 }

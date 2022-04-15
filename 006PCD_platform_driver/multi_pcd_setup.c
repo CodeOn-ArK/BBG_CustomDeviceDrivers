@@ -30,6 +30,7 @@
 #define WRO       1
 #define RDWR      2
 
+#define DEVICE_NAME  "psuedo-character-device"
 
 /* 1. Create Platform data for the devices 
  * (This one is created by us to store data related to the platform devices)
@@ -55,7 +56,7 @@ struct platform_device_data pcdev_pdata[2] = {
  */
 struct platform_device pcdev[2] = {
     [0] = {
-      .name = "psuedo-character-device",
+      .name = DEVICE_NAME,
       .id   = 0,
       .dev = {
         .platform_data = &pcdev_pdata[0],
@@ -63,7 +64,7 @@ struct platform_device pcdev[2] = {
       }
     },
     [1] = {
-      .name = "psuedo-character-device",
+      .name = DEVICE_NAME,
       .id   = 1,
       .dev = {
         .platform_data = &pcdev_pdata[1],
@@ -78,6 +79,8 @@ void pcd_pdevice_release(struct device *dev){
 }
 
 static int __init pcd_pdevice_init(void){
+  //1. First register your device when you load the module
+  //Unless this is done, your driver cannot interact witht the device
       platform_device_register(&pcdev[0]);
       platform_device_register(&pcdev[1]);
       pr_info("Platform Device registered");
@@ -87,6 +90,7 @@ static int __init pcd_pdevice_init(void){
 
 
 static void __exit pcd_pdevice_exit(void){
+  //1. Now you can unregister your device
       platform_device_unregister(&pcdev[0]);
       platform_device_unregister(&pcdev[1]);
       pr_info("Platform Device removed");
