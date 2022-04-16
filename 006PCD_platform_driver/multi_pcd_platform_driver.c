@@ -28,6 +28,7 @@
 #include <linux/device.h>
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
 #include <linux/platform_device.h>
 #include "platform.h"
 
@@ -73,8 +74,50 @@ struct file_operations pcd_fops =
 struct pcdriver_private_data pcdriver_private_data;
 
 int pcd_pdriver_probe(struct platform_device *pcdev){
+  int ret;
+  struct pcdev_private_data *prv_data;
+  struct platform_device_data *pdata; 
+
+  //1.  Fetch the platform data
+  pdata = (struct platform_device_data  *)pcdev->dev.platform_data;
+  if(!pdata){
+    pr_err("No platform data available");
+    ret = -EINVAL;
+    goto out;
+
+  }
+
+  //2.  Dynamically allocate memory for the device private data
+  prv_data = kzalloc(sizeof(*prv_data), GFP_KERNEL);
+  if(!prv_data){
+    pr_err("Memory not available");
+    ret = -ENOMEM;
+    goto out;
+
+  }
+  memcpy(&prv_data->pdev_pdata, pdata, sizeof(*pdata));
+  pr_info("Private DATA; Permission = %d",prv_data->pdev_pdata.perm);
+  pr_info("Private DATA; String = %s",prv_data->pdev_pdata.str);
+  pr_info("Private DATA; Size = %d",prv_data->pdev_pdata.size);
+
+  //3.  Dynamically allocate memory for the device buffer using size information
+  //    from the platform data
+  prv_data->buffer = kzalloc(prv_data->pdev_pdata.size, GFP_KERNEL);
+  
+
+  //4.  Get the device number
+
+  //5.  Do cdev init and cdev add
+
+  //6.  Create device file for the detected platform device
+
+  //7.  Error Handling
+
   pr_info("Driver Probe Success; Device found");
   return 0;
+
+out:
+  return ret;
 
 }
 
