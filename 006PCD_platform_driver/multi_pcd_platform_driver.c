@@ -103,19 +103,47 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
   //3.  Dynamically allocate memory for the device buffer using size information
   //    from the platform data
   prv_data->buffer = kzalloc(prv_data->pdev_pdata.size, GFP_KERNEL);
-  
+  if(!prv_data->buffer){
+    pr_err("Memory not available");
+    ret = -ENOMEM;
+    goto free_prv_data;
+
+  }
 
   //4.  Get the device number
+  prv_data->curr_dev_num = pcdriver_private_data.device_num_base + pcdev->id;
 
   //5.  Do cdev init and cdev add
+  cdev_init(&prv_data->cdev, &pcd_fops);
+  prv_data->cdev.owner = THIS_MODULE;
+  ret = cdev_add(&prv_data->cdev, prv_data->curr_dev_num, 1);
+  if(ret < 0){
+    cdev_del(&prv_data->cdev);
+    goto free_buf;
+
+  }
 
   //6.  Create device file for the detected platform device
+  pcdriver_private_data.device_pcd = device_create(pcdriver_private_data.class_pcd, NULL, prv_data->curr_dev_num, NULL, "pcdev-%d", pcdev->id);
+  if(IS_ERR(pcdriver_private_data.device_pcd)){
+    pr_err("Device Creation Failed");
+    ret = PTR_ERR(pcdriver_private_data.device_pcd );
+    goto cdev_del;
+
+  }
+  
 
   //7.  Error Handling
 
   pr_info("Driver Probe Success; Device found");
   return 0;
 
+cdev_del:
+  cdev_del(&prv_data->cdev);
+free_buf:
+  kfree(prv_data->buffer);
+free_prv_data:
+  kfree(prv_data );
 out:
   return ret;
 
