@@ -95,6 +95,7 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
     goto out;
 
   }
+  dev_set_drvdata(&pcdev->dev, prv_data);
   memcpy(&prv_data->pdev_pdata, pdata, sizeof(*pdata));
   pr_info("Private DATA; Permission = %d",prv_data->pdev_pdata.perm);
   pr_info("Private DATA; String = %s",prv_data->pdev_pdata.str);
@@ -131,13 +132,10 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
     goto cdev_del;
 
   }
-  
-
-  //7.  Error Handling
-
   pr_info("Driver Probe Success; Device found");
   return 0;
 
+  //7.  Error Handling
 cdev_del:
   cdev_del(&prv_data->cdev);
 free_buf:
@@ -150,6 +148,19 @@ out:
 }
 
 int pcd_pdriver_remove(struct platform_device *pcdev){
+  struct pcdev_private_data *prv_data;
+  prv_data = dev_get_drvdata(&pcdev->dev);
+  
+  /* 1. Remove a device that was created with device_create()  */
+  device_destroy(pcdriver_private_data.class_pcd, prv_data->curr_dev_num);
+
+  /* 2. Remove a cdev entry from the system  */
+  cdev_del(&prv_data->cdev);
+
+  /* 3. Free the memory held by the device  */  
+  kfree(prv_data->buffer);
+  kfree(prv_data);
+
   pr_info("Device Removed ");
   return 0;
 
