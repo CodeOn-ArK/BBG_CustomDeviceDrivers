@@ -108,6 +108,6 @@ module_exit(pcd_pdevice_exit);     /* Used to tell the build system about the ex
  * MODULE DESCRIPTION
  */
 MODULE_LICENSE("GPL");            /* This provides information about license; beware to use proprietary licenses*/
-MODULE_AUTHOR("ARK");
+MODULE_AUTHOR("ArK");
 MODULE_DESCRIPTION("A small kernel module to inteface multiple psuedo character platform devices");
 MODULE_INFO(board, "BeagleBone Green v1");

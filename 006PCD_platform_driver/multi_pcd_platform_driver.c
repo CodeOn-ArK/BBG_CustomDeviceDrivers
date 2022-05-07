@@ -204,6 +204,7 @@ loff_t pcd_lseek (struct file *fp, loff_t offset, int whence)
   return fp->f_pos;
 #endif
   return 0;
+  
 }
 
 ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *f_pos)
@@ -232,6 +233,7 @@ ssize_t pcd_read (struct file *fp, char __user *user_buf, size_t count, loff_t *
   return count;                 
 #endif
   return 0;
+
 }                          
 
 ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t *f_pos)
@@ -266,6 +268,7 @@ ssize_t pcd_write (struct file *fp, const char __user *buf, size_t count, loff_t
   return count; 
 #endif
   return 0;
+
 }
 
 int check_perm(struct file *fp){
@@ -300,6 +303,7 @@ int check_perm(struct file *fp){
   return -EPERM;
 #endif
   return 0;
+
 }
 
 int pcd_open (struct inode *pinode, struct file *fp)
@@ -330,12 +334,14 @@ int pcd_open (struct inode *pinode, struct file *fp)
   }
 #endif
   return 0;
+
 }
 
 int pcd_release (struct inode *pinode, struct file *fp)
 {
   pr_info("close was successful");
   return  0;
+
 }
 
 
@@ -395,7 +401,7 @@ module_exit(pcd_pdriver_exit);     /* Used to tell the build system about the ex
  * MODULE DESCRIPTION
  */
 MODULE_LICENSE("GPL");            /* This provides information about license; beware to use proprietary licenses*/
-MODULE_AUTHOR("ARK");
+MODULE_AUTHOR("ArK");
 MODULE_DESCRIPTION("A small kernel module to inteface multiple psuedo char device");
 MODULE_INFO(board, "BeagleBone Green v1");
 
