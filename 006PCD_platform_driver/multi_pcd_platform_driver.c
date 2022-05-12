@@ -88,14 +88,16 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
   }
 
   //2.  Dynamically allocate memory for the device private data
-  prv_data = kzalloc(sizeof(*prv_data), GFP_KERNEL);
+  //Here we are using device managed kzalloc. This memory allocation is being done on behlf of 
+  //`pcdev->dev` this device.
+  prv_data = devm_kzalloc(&pcdev->dev, sizeof(*prv_data), GFP_KERNEL);
   if(!prv_data){
     pr_err("Memory not available");
     ret = -ENOMEM;
     goto out;
 
   }
-  dev_set_drvdata(&pcdev->dev, prv_data);
+  dev_set_drvdata(&pcdev->dev, prv_data);   
   memcpy(&prv_data->pdev_pdata, pdata, sizeof(*pdata));
   pr_info("Private DATA; Permission = %d",prv_data->pdev_pdata.perm);
   pr_info("Private DATA; String = %s",prv_data->pdev_pdata.str);
@@ -103,7 +105,7 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
 
   //3.  Dynamically allocate memory for the device buffer using size information
   //    from the platform data
-  prv_data->buffer = kzalloc(prv_data->pdev_pdata.size, GFP_KERNEL);
+  prv_data->buffer = devm_kzalloc(&pcdev->dev, prv_data->pdev_pdata.size, GFP_KERNEL);
   if(!prv_data->buffer){
     pr_err("Memory not available");
     ret = -ENOMEM;
@@ -111,7 +113,7 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
 
   }
 
-  //4.  Get the device number
+  //4.  Set the device number
   prv_data->curr_dev_num = pcdriver_private_data.device_num_base + pcdev->id;
 
   //5.  Do cdev init and cdev add
@@ -139,9 +141,9 @@ int pcd_pdriver_probe(struct platform_device *pcdev){
 cdev_del:
   cdev_del(&prv_data->cdev);
 free_buf:
-  kfree(prv_data->buffer);
+  devm_kfree(&pcdev->dev, prv_data->buffer);
 free_prv_data:
-  kfree(prv_data );
+  devm_kfree(&pcdev->dev, prv_data );
 out:
   return ret;
 
@@ -157,9 +159,6 @@ int pcd_pdriver_remove(struct platform_device *pcdev){
   /* 2. Remove a cdev entry from the system  */
   cdev_del(&prv_data->cdev);
 
-  /* 3. Free the memory held by the device  */  
-  kfree(prv_data->buffer);
-  kfree(prv_data);
 
   pr_info("Device Removed ");
   return 0;
