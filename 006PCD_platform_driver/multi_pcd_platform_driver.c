@@ -349,6 +349,8 @@ static int __init pcd_pdriver_init(void)
     /* Driver's entry point  */
       int ret;
 
+      pr_info("Total devices -> %d", pcdriver_private_data.total_devices);
+      pcdriver_private_data.total_devices = TOTAL_DEVICES;
       //1. Dynamically allocate a device number for the number of devices
       ret = alloc_chrdev_region(&pcdriver_private_data.device_num_base, 0, pcdriver_private_data.total_devices, "pcdevices");
       if(ret < 0){

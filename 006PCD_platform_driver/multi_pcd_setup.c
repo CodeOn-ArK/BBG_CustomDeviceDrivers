@@ -24,6 +24,7 @@
  */
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 #include "platform.h"
 
 #define RDO       0
@@ -31,11 +32,12 @@
 #define RDWR      2
 
 #define DEVICE_NAME  "psuedo-character-device"
+static int create_device(struct platform_device_data *plat_dev_data,  struct platform_device *plat_dev, int i);
 
 /* 1. Create Platform data for the devices 
  * (This one is created by us to store data related to the platform devices)
  */
-struct platform_device_data pcdev_pdata[2] = {
+struct platform_device_data pcdev_pdata[TOTAL_DEVICES]; /*= {
     [0]  = {
       .perm = RDWR,
       .str  = "Platform-PCDEV-0",
@@ -47,31 +49,26 @@ struct platform_device_data pcdev_pdata[2] = {
       .str  = "Platform-PCDEV-1",
       .size = 512
       
-    }
+    },
+    [2]  = {
+      .perm = RDWR,
+      .str  = "Platform-PCDEV-2",
+      .size = 712 
+      
+    },
+    [3]  = {
+      .perm = RDWR,
+      .str  = "Platform-PCDEV-3",
+      .size = 1024 
+      
+    },
 };
-
+*/
 
 /* 2. Create Platform devices 
  *    This is used by the VFS to register with the platform bus
  */
-struct platform_device pcdev[2] = {
-    [0] = {
-      .name = DEVICE_NAME,
-      .id   = 0,
-      .dev = {
-        .platform_data = &pcdev_pdata[0],
-        .release = pcd_pdevice_release
-      }
-    },
-    [1] = {
-      .name = DEVICE_NAME,
-      .id   = 1,
-      .dev = {
-        .platform_data = &pcdev_pdata[1],
-        .release = pcd_pdevice_release
-      }
-    }
-};
+struct platform_device pcdev[TOTAL_DEVICES]; 
 
 void pcd_pdevice_release(struct device *dev){
     pr_info("Platform device released");
@@ -79,24 +76,52 @@ void pcd_pdevice_release(struct device *dev){
 }
 
 static int __init pcd_pdevice_init(void){
-  //1. First register your device when you load the module
-  //Unless this is done, your driver cannot interact witht the device
-      platform_device_register(&pcdev[0]);
-      platform_device_register(&pcdev[1]);
-      pr_info("Platform Device registered");
-      return 0;
+    int ret, i=0;
+    do{
+      ret = create_device(&pcdev_pdata[i], &pcdev[i], i);
+      if(ret)
+        pr_warn("Can't allocate memory to create device");
+
+    //Register your device when you load the module
+    //Unless this is done, your driver cannot interact witht the device
+      platform_device_register(&pcdev[i]);
+      i++;
+
+    }while(i<TOTAL_DEVICES);
+
+    pr_info("Platform Device registered");
+    return 0;
 
 }
 
 
 static void __exit pcd_pdevice_exit(void){
   //1. Now you can unregister your device
-      platform_device_unregister(&pcdev[0]);
-      platform_device_unregister(&pcdev[1]);
+      int i=0;
+      do{
+        platform_device_unregister(&pcdev[i++]);
+        
+      }while(i<TOTAL_DEVICES);
       pr_info("Platform Device removed");
 
 }
 
+static int create_device(struct platform_device_data *plat_dev_data,  struct platform_device *plat_dev, int i){
+      plat_dev_data->perm = RDWR;
+      plat_dev_data->str = (char *)kmalloc(strlen("Platform-PCDEV-0"), GFP_KERNEL);
+      if(!plat_dev_data->str)
+        return 1;
+      snprintf(plat_dev_data->str, strlen("Platform-PCDEV-0") + 1, "Platform-PCDEV-%d", i);
+      pr_info("String val -> %s", plat_dev_data->str);
+      plat_dev_data->size = 512;
+
+      plat_dev->name = DEVICE_NAME;
+      plat_dev->id   = i;
+      plat_dev->dev.platform_data = plat_dev_data;
+      plat_dev->dev.release = pcd_pdevice_release;
+
+      return 0;
+}
 
 /*
  * REGISTRATION SECTION

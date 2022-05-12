@@ -7,6 +7,7 @@
 #define WO    0x10
 #define RW    0x11
 
+#define TOTAL_DEVICES 4
 
 /* HEADERs Section  */
 loff_t pcd_lseek (struct file *fp, loff_t off, int whence);
@@ -26,5 +27,5 @@ void pcd_pdevice_release(struct device *dev);
 struct platform_device_data{
     int perm;
     int size;
-    const char *str;      //Serial Number 
+    char *str;      //Serial Number 
 };
