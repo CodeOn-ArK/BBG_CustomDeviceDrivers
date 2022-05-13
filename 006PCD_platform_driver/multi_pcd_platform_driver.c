@@ -32,6 +32,10 @@
 #include <linux/platform_device.h>
 #include "platform.h"
 
+int net_devices;
+
+/* This tells the kernel that num is module/cmdline parameter  */
+module_param(net_devices, int, S_IRUGO);
 
 /* Device Private data structure  */
 struct pcdev_private_data{
@@ -349,8 +353,8 @@ static int __init pcd_pdriver_init(void)
     /* Driver's entry point  */
       int ret;
 
+      pcdriver_private_data.total_devices = net_devices;
       pr_info("Total devices -> %d", pcdriver_private_data.total_devices);
-      pcdriver_private_data.total_devices = TOTAL_DEVICES;
       //1. Dynamically allocate a device number for the number of devices
       ret = alloc_chrdev_region(&pcdriver_private_data.device_num_base, 0, pcdriver_private_data.total_devices, "pcdevices");
       if(ret < 0){

@@ -22,7 +22,6 @@ int pcd_pdriver_probe(struct platform_device *pcdev);
 int pcd_pdriver_remove(struct platform_device *pcdev);
 void pcd_pdevice_release(struct device *dev);
 
-
 /* This is to hold device private data  */
 struct platform_device_data{
     int perm;

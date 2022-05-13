@@ -33,42 +33,20 @@
 
 #define DEVICE_NAME  "psuedo-character-device"
 static int create_device(struct platform_device_data *plat_dev_data,  struct platform_device *plat_dev, int i);
+int net_devices;
+
+/* This tells the kernel that num is module/cmdline parameter  */
+module_param(net_devices, int, S_IRUGO);
 
 /* 1. Create Platform data for the devices 
  * (This one is created by us to store data related to the platform devices)
  */
-struct platform_device_data pcdev_pdata[TOTAL_DEVICES]; /*= {
-    [0]  = {
-      .perm = RDWR,
-      .str  = "Platform-PCDEV-0",
-      .size = 512
-      
-    },
-    [1]  = {
-      .perm = RDWR,
-      .str  = "Platform-PCDEV-1",
-      .size = 512
-      
-    },
-    [2]  = {
-      .perm = RDWR,
-      .str  = "Platform-PCDEV-2",
-      .size = 712 
-      
-    },
-    [3]  = {
-      .perm = RDWR,
-      .str  = "Platform-PCDEV-3",
-      .size = 1024 
-      
-    },
-};
-*/
+struct platform_device_data *pcdev_pdata;
 
 /* 2. Create Platform devices 
  *    This is used by the VFS to register with the platform bus
  */
-struct platform_device pcdev[TOTAL_DEVICES]; 
+struct platform_device *pcdev;
 
 void pcd_pdevice_release(struct device *dev){
     pr_info("Platform device released");
@@ -77,6 +55,9 @@ void pcd_pdevice_release(struct device *dev){
 
 static int __init pcd_pdevice_init(void){
     int ret, i=0;
+    pcdev_pdata = (struct platform_device_data *)kcalloc(net_devices, sizeof(struct platform_device_data), GFP_KERNEL);
+    pcdev = (struct platform_device *)kcalloc(net_devices, sizeof(struct platform_device), GFP_KERNEL);
+
     do{
       ret = create_device(&pcdev_pdata[i], &pcdev[i], i);
       if(ret)
@@ -87,7 +68,7 @@ static int __init pcd_pdevice_init(void){
       platform_device_register(&pcdev[i]);
       i++;
 
-    }while(i<TOTAL_DEVICES);
+    }while(i<net_devices);
 
     pr_info("Platform Device registered");
     return 0;
@@ -101,7 +82,7 @@ static void __exit pcd_pdevice_exit(void){
       do{
         platform_device_unregister(&pcdev[i++]);
         
-      }while(i<TOTAL_DEVICES);
+      }while(i<net_devices);
       pr_info("Platform Device removed");
 
 }
